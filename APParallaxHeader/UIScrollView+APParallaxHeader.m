@@ -11,7 +11,10 @@
 
 @interface APParallaxView ()
 
+@property (nonatomic, readwrite) BOOL isExtended;
+
 @property (nonatomic, readwrite) APParallaxTrackingState state;
+@property (nonatomic, readwrite) APParallaxAnimatingState animatingState;
 
 @property (nonatomic, weak) UIScrollView *scrollView;
 @property (nonatomic, readwrite) CGFloat originalTopInset;
@@ -43,6 +46,7 @@ static char UIScrollViewParallaxView;
         
         view.scrollView = self;
         view.parallaxHeight = height;
+        view.animatingState = APParallaxAnimatingInactive;
         [self addSubview:view];
         
         view.originalTopInset = self.contentInset.top;
@@ -184,6 +188,15 @@ static char UIScrollViewParallaxView;
         self.shadowView = [[APParallaxShadowView alloc] initWithFrame:CGRectMake(0, CGRectGetMaxY(frame)-8, CGRectGetWidth(frame), 8)];
         [self.shadowView setAutoresizingMask:UIViewAutoresizingFlexibleTopMargin];
         [self addSubview:self.shadowView];
+        
+        UITapGestureRecognizer* recognizer = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(toggleFullView)];
+        recognizer.numberOfTapsRequired = 1;
+        [self addGestureRecognizer:recognizer];
+        
+        self.isExtended = NO;
+        self.allowsExtension = NO;
+        self.extensionHeight = 400.0f;
+        self.extensionThreshold = -300.0f;
     }
     
     return self;
@@ -219,17 +232,53 @@ static char UIScrollViewParallaxView;
 }
 
 - (void)scrollViewDidScroll:(CGPoint)contentOffset {
+    
+    if (self.allowsExtension && contentOffset.y < self.extensionThreshold && self.animatingState == APParallaxAnimatingInactive) {
+        [self toggleFullView];
+    }
+    
     // We do not want to track when the parallax view is hidden
     if (contentOffset.y > 0) {
         [self setState:APParallaxTrackingInactive];
     } else {
         [self setState:APParallaxTrackingActive];
     }
-    
-    if(self.state == APParallaxTrackingActive) {
+
+    if(self.state == APParallaxTrackingActive && (self.animatingState == APParallaxAnimatingInactive ||
+                                                  (self.animatingState == APParallaxAnimatingDown && contentOffset.y == -self.extensionHeight) ||
+                                                  (self.animatingState == APParallaxAnimatingUp && contentOffset.y == -self.scrollView.contentInset.top)))
+    {
         CGFloat yOffset = contentOffset.y*-1;
         [self setFrame:CGRectMake(0, contentOffset.y, CGRectGetWidth(self.frame), yOffset)];
     }
+    
+}
+
+- (void)toggleFullView {
+    CGPoint offset;
+    
+    if (!self.isExtended) {
+        self.animatingState = APParallaxAnimatingDown;
+        offset = CGPointMake(0, -self.extensionHeight);
+    } else {
+        self.animatingState = APParallaxAnimatingUp;
+        offset = CGPointMake(0, -self.scrollView.contentInset.top);
+    }
+    
+    CGPoint prevOffset = self.scrollView.contentOffset;
+    
+    [self.scrollView setScrollEnabled:NO];
+    // workaround to prevent "jump" before the animation
+    [self.scrollView setContentOffset:prevOffset animated:NO];
+    
+    [UIView animateWithDuration:0.3 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+        self.scrollView.contentOffset = offset;
+    } completion:^(BOOL finished) {
+        [self.scrollView setScrollEnabled:YES];
+        
+        self.isExtended = !self.isExtended;
+        self.animatingState = APParallaxAnimatingInactive;
+    }];
 }
 
 @end

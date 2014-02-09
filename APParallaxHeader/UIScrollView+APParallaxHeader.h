@@ -27,12 +27,28 @@ enum {
 
 typedef NSUInteger APParallaxTrackingState;
 
+
+enum {
+    APParallaxAnimatingInactive = 0,
+    APParallaxAnimatingDown,
+    APParallaxAnimatingUp,
+};
+
+typedef NSUInteger APParallaxAnimatingState;
+
 @interface APParallaxView : UIView
 
 @property (nonatomic, readonly) APParallaxTrackingState state;
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic, strong) UIView *currentSubView;
 @property (nonatomic, strong) APParallaxShadowView *shadowView;
+
+@property (nonatomic) BOOL allowsExtension;
+@property (nonatomic) CGFloat extensionHeight;
+@property (nonatomic) CGFloat extensionThreshold;
+
+@property (nonatomic, readonly) APParallaxAnimatingState animatingState;
+@property (nonatomic, readonly) BOOL isExtended;
 
 @end
 
