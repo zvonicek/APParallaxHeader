@@ -15,6 +15,7 @@
 
 @property (nonatomic, readwrite) APParallaxTrackingState state;
 @property (nonatomic, readwrite) APParallaxAnimatingState animatingState;
+@property (nonatomic, readwrite) BOOL allowFrameChange;
 
 @property (nonatomic, weak) UIScrollView *scrollView;
 @property (nonatomic, readwrite) CGFloat originalTopInset;
@@ -193,6 +194,7 @@ static char UIScrollViewParallaxView;
         recognizer.numberOfTapsRequired = 1;
         [self addGestureRecognizer:recognizer];
         
+        self.allowFrameChange = YES;
         self.isExtended = NO;
         self.allowsExtension = NO;
         self.extensionHeight = 400.0f;
@@ -233,7 +235,7 @@ static char UIScrollViewParallaxView;
 
 - (void)scrollViewDidScroll:(CGPoint)contentOffset {
     
-    if (self.allowsExtension && contentOffset.y < self.extensionThreshold && self.animatingState == APParallaxAnimatingInactive) {
+    if (self.allowsExtension && (self.isExtended || contentOffset.y < self.extensionThreshold) && self.animatingState == APParallaxAnimatingInactive) {
         [self toggleFullView];
     }
     
@@ -244,9 +246,7 @@ static char UIScrollViewParallaxView;
         [self setState:APParallaxTrackingActive];
     }
     
-    if(self.state == APParallaxTrackingActive && ((self.animatingState == APParallaxAnimatingInactive && contentOffset.y != -self.scrollView.contentInset.top)||
-                                                  (self.animatingState == APParallaxAnimatingDown && contentOffset.y == -self.extensionHeight) ||
-                                                  (self.animatingState == APParallaxAnimatingUp && contentOffset.y == -self.scrollView.contentInset.top)))
+    if(self.state == APParallaxTrackingActive && self.allowFrameChange)
     {
         CGFloat yOffset = contentOffset.y*-1;
         [self setFrame:CGRectMake(0, contentOffset.y, CGRectGetWidth(self.frame), yOffset)];
@@ -259,12 +259,18 @@ static char UIScrollViewParallaxView;
     CGPoint prevOffset = self.scrollView.contentOffset;
 
     if (!self.isExtended) {
+        self.allowFrameChange = NO;
         self.animatingState = APParallaxAnimatingDown;
         [self.scrollView setScrollEnabled:NO];
+        self.allowFrameChange = YES;
+        
         offset = CGPointMake(0, -self.extensionHeight);
     } else {
-        [self.scrollView setScrollEnabled:NO];
+        self.allowFrameChange = NO;
         self.animatingState = APParallaxAnimatingUp;
+        [self.scrollView setScrollEnabled:NO];
+        self.allowFrameChange = YES;
+        
         offset = CGPointMake(0, -self.scrollView.contentInset.top);
     }
     

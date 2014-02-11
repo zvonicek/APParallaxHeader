@@ -27,7 +27,6 @@ enum {
 
 typedef NSUInteger APParallaxTrackingState;
 
-
 enum {
     APParallaxAnimatingInactive = 0,
     APParallaxAnimatingDown,
@@ -48,6 +47,7 @@ typedef NSUInteger APParallaxAnimatingState;
 @property (nonatomic) CGFloat extensionThreshold;
 
 @property (nonatomic, readonly) APParallaxAnimatingState animatingState;
+@property (nonatomic, readonly) BOOL allowFrameChange;
 @property (nonatomic, readonly) BOOL isExtended;
 
 @end
