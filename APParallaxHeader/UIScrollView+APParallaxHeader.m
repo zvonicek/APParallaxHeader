@@ -243,8 +243,8 @@ static char UIScrollViewParallaxView;
     } else {
         [self setState:APParallaxTrackingActive];
     }
-
-    if(self.state == APParallaxTrackingActive && (self.animatingState == APParallaxAnimatingInactive ||
+    
+    if(self.state == APParallaxTrackingActive && ((self.animatingState == APParallaxAnimatingInactive && contentOffset.y != -self.scrollView.contentInset.top)||
                                                   (self.animatingState == APParallaxAnimatingDown && contentOffset.y == -self.extensionHeight) ||
                                                   (self.animatingState == APParallaxAnimatingUp && contentOffset.y == -self.scrollView.contentInset.top)))
     {
@@ -256,28 +256,36 @@ static char UIScrollViewParallaxView;
 
 - (void)toggleFullView {
     CGPoint offset;
-    
+    CGPoint prevOffset = self.scrollView.contentOffset;
+
     if (!self.isExtended) {
         self.animatingState = APParallaxAnimatingDown;
+        [self.scrollView setScrollEnabled:NO];
         offset = CGPointMake(0, -self.extensionHeight);
     } else {
+        [self.scrollView setScrollEnabled:NO];
         self.animatingState = APParallaxAnimatingUp;
         offset = CGPointMake(0, -self.scrollView.contentInset.top);
     }
     
-    CGPoint prevOffset = self.scrollView.contentOffset;
-    
-    [self.scrollView setScrollEnabled:NO];
-    // workaround to prevent "jump" before the animation
+    // workaround to prevent "jump" before the animation starts
     [self.scrollView setContentOffset:prevOffset animated:NO];
     
-    [UIView animateWithDuration:0.3 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
-        self.scrollView.contentOffset = offset;
+    [UIView animateWithDuration:0.0 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+        // workaround for a case when header is being extended while not scrolled to top
+        if (self.scrollView.contentOffset.y > -self.scrollView.contentInset.top) {
+            self.scrollView.contentOffset = CGPointMake(self.scrollView.contentOffset.x, -self.scrollView.contentInset.top);
+            [self setFrame:CGRectMake(0, self.scrollView.contentOffset.y, CGRectGetWidth(self.frame), -self.scrollView.contentOffset.y)];
+        }
     } completion:^(BOOL finished) {
-        [self.scrollView setScrollEnabled:YES];
-        
-        self.isExtended = !self.isExtended;
-        self.animatingState = APParallaxAnimatingInactive;
+        [UIView animateWithDuration:0.3 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+            self.scrollView.contentOffset = offset;
+        } completion:^(BOOL finished) {
+            [self.scrollView setScrollEnabled:YES];
+            
+            self.isExtended = !self.isExtended;
+            self.animatingState = APParallaxAnimatingInactive;
+        }];
     }];
 }
 
